@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}工艺单价 - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <h1>工艺单价</h1>
+        <p class="muted">维护贴片、焊接和绑定的单价。产品成本会按点数或线数实时计算。</p>
+    </div>
+</div>
+
+<section class="panel">
+    {% if rates %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>项目</th>
+                    <th>单价</th>
+                    <th>更新时间</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rate in rates %}
+                <tr>
+                    <td>{{ rate.rate_name }}</td>
+                    <td style="min-width: 160px;">
+                        <input class="rate-input" type="number" step="0.0001" value="{{ rate.unit_price or 0 }}" data-rate-id="{{ rate.id }}" data-original-value="{{ rate.unit_price or 0 }}">
+                    </td>
+                    <td class="updated-at">{{ rate.updated_at.strftime("%Y-%m-%d %H:%M") if rate.updated_at else "-" }}</td>
+                    <td class="save-status muted">自动保存</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">暂无工艺单价</div>
+    {% endif %}
+</section>
+
+<script>
+    document.querySelectorAll(".rate-input").forEach((input) => {
+        input.addEventListener("focus", () => input.select());
+        input.addEventListener("mouseup", (event) => event.preventDefault());
+        input.addEventListener("blur", async () => {
+            if (input.value === input.dataset.originalValue) {
+                return;
+            }
+
+            const row = input.closest("tr");
+            const status = row.querySelector(".save-status");
+            const updatedAt = row.querySelector(".updated-at");
+            status.textContent = "保存中...";
+            status.classList.add("muted");
+
+            try {
+                const response = await fetch(`/process-rates/${input.dataset.rateId}/price`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({unit_price: input.value})
+                });
+
+                if (!response.ok) {
+                    throw new Error("保存失败");
+                }
+
+                const result = await response.json();
+                input.dataset.originalValue = String(result.unit_price);
+                input.value = result.unit_price;
+                updatedAt.textContent = result.updated_at;
+                status.textContent = "已保存";
+                status.classList.remove("muted");
+            } catch (error) {
+                status.textContent = "保存失败";
+                status.classList.remove("muted");
+            }
+        });
+    });
+</script>
+{% endblock %}

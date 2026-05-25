@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}报价档案 - 报价工作台{% endblock %}
+
+{% block content %}
+<style>
+    .quote-archive-table-wrap {
+        overflow-x: visible;
+    }
+
+    .quote-archive-table {
+        table-layout: fixed;
+        font-size: 12px;
+    }
+
+    .quote-archive-table th,
+    .quote-archive-table td {
+        padding: 9px 7px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .quote-archive-table th:nth-child(1),
+    .quote-archive-table td:nth-child(1) { width: 48px; }
+    .quote-archive-table th:nth-child(2),
+    .quote-archive-table td:nth-child(2) { width: 70px; }
+    .quote-archive-table th:nth-child(3),
+    .quote-archive-table td:nth-child(3) { width: 100px; }
+    .quote-archive-table th:nth-child(4),
+    .quote-archive-table td:nth-child(4) { width: 105px; }
+    .quote-archive-table th:nth-child(5),
+    .quote-archive-table td:nth-child(5) { width: 110px; }
+    .quote-archive-table th:nth-child(6),
+    .quote-archive-table td:nth-child(6) { width: 110px; }
+    .quote-archive-table th:nth-child(7),
+    .quote-archive-table td:nth-child(7) { width: 82px; }
+    .quote-archive-table th:nth-child(8),
+    .quote-archive-table td:nth-child(8) { width: 82px; }
+    .quote-archive-table th:nth-child(9),
+    .quote-archive-table td:nth-child(9) { width: 82px; }
+    .quote-archive-table th:nth-child(10),
+    .quote-archive-table td:nth-child(10) { width: 58px; }
+
+    .quote-archive-table .button {
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 12px;
+    }
+</style>
+
+<div class="toolbar">
+    <div>
+        <h1>报价档案</h1>
+        <p class="muted">报价保存后不提供编辑入口，用于保留当时材料价格和成本结构。</p>
+    </div>
+    <a class="button" href="/temporary-quote">创建临时报价</a>
+</div>
+
+<section class="panel">
+    <div class="panel-body">
+        <div class="form-grid">
+            <label>
+                客户名称
+                <input id="customerFilter" type="text" placeholder="输入客户名称筛选">
+            </label>
+            <label>
+                型号
+                <input id="modelFilter" type="text" placeholder="输入型号筛选">
+            </label>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    {% if quotes %}
+    <div class="table-wrap quote-archive-table-wrap">
+        <table class="quote-archive-table">
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>类型</th>
+                    <th>客户</th>
+                    <th>产品编码</th>
+                    <th>产品名称</th>
+                    <th>型号</th>
+                    <th>当时成本</th>
+                    <th>最终报价</th>
+                    <th>日期</th>
+                    <th>查看</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quote in quotes %}
+                <tr class="quote-row" data-customer="{{ quote.customer_name }}" data-model="{{ quote.specification or '' }}">
+                    <td>#{{ quote.id }}</td>
+                    <td>{{ "临时报价" if quote.quote_type == "temporary" else "BOM 报价" }}</td>
+                    <td>{{ quote.customer_name }}</td>
+                    <td>{{ quote.product_code or "-" }}</td>
+                    <td>{{ quote.product_name or "-" }}</td>
+                    <td>{{ quote.specification or "-" }}</td>
+                    <td>{{ "%.4f"|format(quote.calculated_cost or 0) }}</td>
+                    <td><strong>{{ "%.4f"|format(quote.final_price or 0) }}</strong></td>
+                    <td>{{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</td>
+                    <td><a class="button ghost" href="/quotes/{{ quote.id }}">详情</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">暂无报价档案，请从产品详情页创建报价</div>
+    {% endif %}
+</section>
+
+<script>
+    const customerFilter = document.getElementById("customerFilter");
+    const modelFilter = document.getElementById("modelFilter");
+    const rows = document.querySelectorAll(".quote-row");
+
+    function applyFilters() {
+        const customerValue = customerFilter.value.trim().toLowerCase();
+        const modelValue = modelFilter.value.trim().toLowerCase();
+
+        rows.forEach((row) => {
+            const customerMatched = row.dataset.customer.toLowerCase().includes(customerValue);
+            const modelMatched = row.dataset.model.toLowerCase().includes(modelValue);
+            row.style.display = customerMatched && modelMatched ? "" : "none";
+        });
+    }
+
+    customerFilter.addEventListener("input", applyFilters);
+    modelFilter.addEventListener("input", applyFilters);
+</script>
+{% endblock %}

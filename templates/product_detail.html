@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.product_code }} - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <p class="pill">{{ product.product_code }}</p>
+        <h1>{{ product.product_name }}</h1>
+        <p class="muted">{{ product.specification or "未填写规格" }}</p>
+    </div>
+    <a class="button ghost" href="/products">返回产品</a>
+</div>
+
+<section class="grid-3">
+    <div class="metric"><span>材料成本</span><strong>{{ "%.4f"|format(material_cost) }}</strong></div>
+    <div class="metric"><span>工艺费用</span><strong>{{ "%.4f"|format(process_cost) }}</strong></div>
+    <div class="metric"><span>实时总成本</span><strong>{{ "%.4f"|format(total_cost) }}</strong></div>
+</section>
+
+<section class="grid-3" style="margin-top: 14px;">
+    <div class="metric"><span>材料小计</span><strong>{{ "%.4f"|format(process_detail.raw_material_cost) }}</strong></div>
+    <div class="metric"><span>材料损耗 1%</span><strong>{{ "%.4f"|format(process_detail.material_loss_cost) }}</strong></div>
+    <div class="metric"><span>含损耗材料成本</span><strong>{{ "%.4f"|format(material_cost) }}</strong></div>
+</section>
+
+<section class="grid-2" style="margin-top: 18px;">
+    <div class="panel">
+        <div class="panel-head">
+            <h2>工艺字段</h2>
+            <a class="button ghost" href="/process-rates">维护工艺单价</a>
+        </div>
+        <div class="panel-body">
+            <form method="POST">
+                <div class="form-grid">
+                    <label>贴片点数<input type="number" name="smt_points" value="{{ product.smt_points or 0 }}"></label>
+                    <label>焊接点数<input type="number" name="welding_points" value="{{ product.welding_points or 0 }}"></label>
+                    <label>绑定线数<input type="number" name="binding_wires" value="{{ product.binding_wires or 0 }}"></label>
+                    <label>加工费<input type="number" step="0.0001" name="labor_cost" value="{{ product.labor_cost or 0 }}"></label>
+                    <label>包装费<input type="number" step="0.0001" name="packaging_cost" value="{{ product.packaging_cost or 0 }}"></label>
+                </div>
+                <div class="table-wrap" style="margin-top: 16px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>项目</th>
+                                <th>点数/线数</th>
+                                <th>单价</th>
+                                <th>金额</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>贴片</td>
+                                <td>{{ process_detail.smt_points }}</td>
+                                <td>{{ "%.4f"|format(process_detail.smt_unit_price) }}</td>
+                                <td>{{ "%.4f"|format(process_detail.smt_cost) }}</td>
+                            </tr>
+                            <tr>
+                                <td>焊接</td>
+                                <td>{{ process_detail.welding_points }}</td>
+                                <td>{{ "%.4f"|format(process_detail.welding_unit_price) }}</td>
+                                <td>{{ "%.4f"|format(process_detail.welding_cost) }}</td>
+                            </tr>
+                            <tr>
+                                <td>绑定</td>
+                                <td>{{ process_detail.binding_wires }}</td>
+                                <td>{{ "%.4f"|format(process_detail.binding_unit_price) }}</td>
+                                <td>{{ "%.4f"|format(process_detail.binding_cost) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-actions"><button class="button" type="submit">保存工艺信息</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-head"><h2>创建报价</h2></div>
+        <div class="panel-body">
+            <form action="/products/{{ product.id }}/quote" method="POST" class="stack">
+                <label>客户名称<input type="text" name="customer_name" required></label>
+                <label>加成百分比<input type="number" step="0.01" name="markup_percentage" value="0" required></label>
+                <label>备注<textarea name="note"></textarea></label>
+                <button class="button" type="submit">按当前成本保存报价快照</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>BOM 材料组成</h2>
+        <a class="button ghost" href="/materials">维护材料价格</a>
+    </div>
+    {% if material_rows %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>子件编码</th>
+                    <th>子件品名</th>
+                    <th>规格</th>
+                    <th>单位</th>
+                    <th>数量</th>
+                    <th>当前单价</th>
+                    <th>金额</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in material_rows %}
+                <tr>
+                    <td>{{ item.part_code }}</td>
+                    <td>{{ item.part_name }}</td>
+                    <td>{{ item.specification or "-" }}</td>
+                    <td>{{ item.unit or "-" }}</td>
+                    <td>{{ "%.4f"|format(item.quantity) }}</td>
+                    <td>{{ "%.4f"|format(item.price) }}</td>
+                    <td>{{ "%.4f"|format(item.line_cost) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">这个产品还没有 BOM 明细</div>
+    {% endif %}
+</section>
+{% endblock %}

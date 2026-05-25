@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}产品 - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <h1>产品成本</h1>
+        <p class="muted">产品成本由当前材料价格、BOM 用量和产品工艺费用实时计算。</p>
+    </div>
+    <a class="button secondary" href="/">导入新 BOM</a>
+</div>
+
+<section class="panel">
+    <div class="panel-body">
+        <div class="form-grid">
+            <label>
+                型号
+                <input id="modelFilter" type="text" placeholder="输入型号筛选">
+            </label>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    {% if products %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>产品编码</th>
+                    <th>品名</th>
+                    <th>规格</th>
+                    <th>材料成本</th>
+                    <th>工艺费用</th>
+                    <th>实时成本</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                {% set cost = costs[product.id] %}
+                <tr class="product-row" data-model="{{ product.specification or '' }}">
+                    <td>{{ product.product_code }}</td>
+                    <td>{{ product.product_name }}</td>
+                    <td>{{ product.specification or "-" }}</td>
+                    <td>{{ "%.4f"|format(cost[0]) }}</td>
+                    <td>{{ "%.4f"|format(cost[1]) }}</td>
+                    <td><strong>{{ "%.4f"|format(cost[2]) }}</strong></td>
+                    <td><a class="button ghost" href="/products/{{ product.id }}">报价</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">还没有产品，请先导入 BOM Excel</div>
+    {% endif %}
+</section>
+
+<script>
+    const modelFilter = document.getElementById("modelFilter");
+    const rows = document.querySelectorAll(".product-row");
+
+    function applyFilters() {
+        const modelValue = modelFilter.value.trim().toLowerCase();
+
+        rows.forEach((row) => {
+            const modelMatched = row.dataset.model.toLowerCase().includes(modelValue);
+            row.style.display = modelMatched ? "" : "none";
+        });
+    }
+
+    modelFilter.addEventListener("input", applyFilters);
+</script>
+{% endblock %}

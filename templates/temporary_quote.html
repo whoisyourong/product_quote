@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}临时报价 - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <h1>临时报价</h1>
+        <p class="muted">没有正式 BOM 时，可手工录入材料；也可以引用材料库中的现有材料并带出当前价格。</p>
+    </div>
+    <a class="button ghost" href="/quotes">查看报价档案</a>
+</div>
+
+<form method="POST" id="temporaryQuoteForm">
+    <style>
+        .temporary-material-panel {
+            overflow: visible;
+            position: relative;
+            z-index: 30;
+        }
+
+        .temporary-material-panel .table-wrap {
+            overflow: visible;
+        }
+
+        .temp-material-table {
+            width: 100%;
+            min-width: 0;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        .temp-material-table th,
+        .temp-material-table td {
+            padding: 8px 6px;
+        }
+
+        .temp-material-table input,
+        .temp-material-table select {
+            border-radius: 7px;
+            font-size: 12px;
+            min-height: 34px;
+            padding: 7px 8px;
+        }
+
+        .temp-material-table .button {
+            min-height: 32px;
+            padding: 6px 9px;
+        }
+
+        .temp-material-table th:nth-child(1),
+        .temp-material-table td:nth-child(1) { width: 105px; }
+        .temp-material-table th:nth-child(2),
+        .temp-material-table td:nth-child(2) { width: 240px; }
+        .temp-material-table th:nth-child(3),
+        .temp-material-table td:nth-child(3) { width: 125px; }
+        .temp-material-table th:nth-child(4),
+        .temp-material-table td:nth-child(4) { width: 120px; }
+        .temp-material-table th:nth-child(5),
+        .temp-material-table td:nth-child(5) { width: 190px; }
+        .temp-material-table th:nth-child(6),
+        .temp-material-table td:nth-child(6) { width: 60px; }
+        .temp-material-table th:nth-child(7),
+        .temp-material-table td:nth-child(7) { width: 75px; }
+        .temp-material-table th:nth-child(8),
+        .temp-material-table td:nth-child(8) { width: 85px; }
+        .temp-material-table th:nth-child(9),
+        .temp-material-table td:nth-child(9) { width: 85px; }
+        .temp-material-table th:nth-child(10),
+        .temp-material-table td:nth-child(10) { width: 70px; }
+
+        .material-picker {
+            position: relative;
+        }
+
+        .material-suggestions {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 240px;
+            max-height: 260px;
+            overflow-y: auto;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 24px 64px rgba(24, 32, 47, 0.22);
+            font-size: 12px;
+        }
+
+        .material-suggestion {
+            cursor: pointer;
+            padding: 10px 12px;
+            white-space: normal;
+        }
+
+        .material-suggestion:hover {
+            background: rgba(15,118,110,0.09);
+        }
+
+        .material-suggestion.is-empty {
+            cursor: default;
+        }
+
+        .material-suggestion.is-empty:hover {
+            background: transparent;
+        }
+
+        .material-suggestion strong {
+            display: block;
+        }
+
+        .material-suggestion span {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media (max-width: 1180px) {
+            .temporary-material-panel .table-wrap {
+                overflow-x: auto;
+            }
+
+            .temp-material-table { min-width: 1120px; }
+        }
+    </style>
+
+    <section class="grid-3">
+        <div class="metric"><span>材料小计</span><strong id="rawMaterialCost">0.0000</strong></div>
+        <div class="metric"><span>材料损耗 1%</span><strong id="materialLossCost">0.0000</strong></div>
+        <div class="metric"><span>预估总成本</span><strong id="totalCost">0.0000</strong></div>
+    </section>
+
+    <section class="panel" style="margin-top: 18px;">
+        <div class="panel-head"><h2>客户与产品</h2></div>
+        <div class="panel-body">
+            <div class="form-grid">
+                <label>客户名称<input type="text" name="customer_name" required></label>
+                <label>产品编码<input type="text" name="product_code" placeholder="留空自动生成 TEMP 编码"></label>
+                <label>品名<input type="text" name="product_name" required></label>
+                <label>型号/规格<input type="text" name="product_specification"></label>
+                <label>加成百分比<input class="cost-input" type="number" step="0.01" name="markup_percentage" value="0" required></label>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head"><h2>工艺字段</h2></div>
+        <div class="panel-body">
+            <div class="form-grid">
+                <label>贴片点数<input class="cost-input" type="number" name="smt_points" value="0"></label>
+                <label>焊接点数<input class="cost-input" type="number" name="welding_points" value="0"></label>
+                <label>绑定线数<input class="cost-input" type="number" name="binding_wires" value="0"></label>
+                <label>加工费<input class="cost-input" type="number" step="0.0001" name="labor_cost" value="0"></label>
+                <label>包装费<input class="cost-input" type="number" step="0.0001" name="packaging_cost" value="0"></label>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel temporary-material-panel">
+        <div class="panel-head">
+            <h2>材料明细</h2>
+            <button class="button ghost" type="button" id="addMaterialRow">添加材料</button>
+        </div>
+        <div class="table-wrap">
+            <table class="temp-material-table">
+                <thead>
+                    <tr>
+                        <th>来源</th>
+                        <th>引用材料</th>
+                        <th>子件编码</th>
+                        <th>子件品名</th>
+                        <th>规格</th>
+                        <th>单位</th>
+                        <th>数量</th>
+                        <th>单价</th>
+                        <th>金额</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="materialRows"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-body">
+            <label>备注<textarea name="note"></textarea></label>
+            <div class="form-actions">
+                <button class="button" type="submit">保存临时报价快照</button>
+            </div>
+        </div>
+    </section>
+</form>
+
+<template id="materialRowTemplate">
+    <tr class="material-row">
+        <td>
+            <select name="row_mode" class="mode-select">
+                <option value="existing">引用现有材料</option>
+                <option value="temporary">临时材料</option>
+            </select>
+        </td>
+        <td>
+            <div class="material-picker">
+                <input class="material-search" type="text" placeholder="输入编码、品名或规格筛选">
+                <input name="material_id" class="material-id" type="hidden">
+                <div class="material-suggestions"></div>
+            </div>
+        </td>
+        <td><input name="part_code" class="part-code" type="text"></td>
+        <td><input name="part_name" class="part-name" type="text" required></td>
+        <td><input name="material_specification" class="specification" type="text"></td>
+        <td><input name="unit" class="unit" type="text"></td>
+        <td><input name="quantity" class="quantity cost-input" type="number" step="0.0001" value="1" required></td>
+        <td><input name="price" class="price cost-input" type="number" step="0.0001" value="0" required></td>
+        <td class="line-cost">0.0000</td>
+        <td><button class="button ghost remove-row" type="button">删除</button></td>
+    </tr>
+</template>
+
+<script>
+    const materials = {{ material_options|tojson }};
+    const materialRows = document.getElementById("materialRows");
+    const rowTemplate = document.getElementById("materialRowTemplate");
+    const addMaterialRow = document.getElementById("addMaterialRow");
+    const rates = {{ rate_values|tojson }};
+    const materialSuggestions = document.createElement("div");
+    materialSuggestions.className = "material-suggestions";
+    document.body.appendChild(materialSuggestions);
+    let activeMaterialRow = null;
+
+    function numberValue(value) {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function materialText(material) {
+        return `${material.part_code} ${material.part_name} ${material.specification} ${material.unit}`.toLowerCase();
+    }
+
+    function applyMaterial(row, material) {
+        row.querySelector(".material-id").value = material.id;
+        row.querySelector(".material-search").value = `${material.part_code} / ${material.part_name} / ${material.specification}`;
+        row.querySelector(".part-code").value = material.part_code;
+        row.querySelector(".part-name").value = material.part_name;
+        row.querySelector(".specification").value = material.specification;
+        row.querySelector(".unit").value = material.unit;
+        row.querySelector(".price").value = material.price;
+        materialSuggestions.style.display = "none";
+        refreshRow(row);
+    }
+
+    function renderSuggestions(row) {
+        const search = row.querySelector(".material-search");
+        const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        const matched = materials
+            .filter((material) => terms.every((term) => materialText(material).includes(term)))
+            .slice(0, 20);
+
+        activeMaterialRow = row;
+        materialSuggestions.innerHTML = "";
+        if (!materials.length) {
+            const item = document.createElement("div");
+            item.className = "material-suggestion is-empty";
+            item.innerHTML = "<strong>材料库暂无数据</strong><span>请先导入 BOM 或切换为临时材料</span>";
+            materialSuggestions.appendChild(item);
+        } else if (!matched.length) {
+            const item = document.createElement("div");
+            item.className = "material-suggestion is-empty";
+            item.innerHTML = "<strong>没有匹配材料</strong><span>请换个编码、品名或规格关键词</span>";
+            materialSuggestions.appendChild(item);
+        } else {
+            matched.forEach((material) => {
+                const item = document.createElement("div");
+                item.className = "material-suggestion";
+                item.innerHTML = `<strong>${material.part_code} / ${material.part_name}</strong><span>${material.specification || "-"} · ${material.unit || "-"} · ${Number(material.price || 0).toFixed(4)}</span>`;
+                item.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    applyMaterial(row, material);
+                });
+                materialSuggestions.appendChild(item);
+            });
+        }
+
+        const rect = search.getBoundingClientRect();
+        materialSuggestions.style.top = `${rect.bottom + 6}px`;
+        materialSuggestions.style.left = `${rect.left}px`;
+        materialSuggestions.style.width = `${rect.width}px`;
+        materialSuggestions.style.display = "block";
+    }
+
+    function refreshRow(row) {
+        const quantity = numberValue(row.querySelector(".quantity").value);
+        const price = numberValue(row.querySelector(".price").value);
+        row.querySelector(".line-cost").textContent = (quantity * price).toFixed(4);
+        refreshTotals();
+    }
+
+    function refreshTotals() {
+        let rawMaterialCost = 0;
+        document.querySelectorAll(".material-row").forEach((row) => {
+            rawMaterialCost += numberValue(row.querySelector(".quantity").value) * numberValue(row.querySelector(".price").value);
+        });
+
+        const materialLossCost = rawMaterialCost * 0.01;
+        const materialCost = rawMaterialCost + materialLossCost;
+        const smtCost = numberValue(document.querySelector("[name='smt_points']").value) * rates.smt;
+        const weldingCost = numberValue(document.querySelector("[name='welding_points']").value) * rates.welding;
+        const bindingCost = numberValue(document.querySelector("[name='binding_wires']").value) * rates.binding;
+        const processCost = smtCost + weldingCost + bindingCost + numberValue(document.querySelector("[name='labor_cost']").value) + numberValue(document.querySelector("[name='packaging_cost']").value);
+
+        document.getElementById("rawMaterialCost").textContent = rawMaterialCost.toFixed(4);
+        document.getElementById("materialLossCost").textContent = materialLossCost.toFixed(4);
+        document.getElementById("totalCost").textContent = (materialCost + processCost).toFixed(4);
+    }
+
+    function addRow() {
+        const row = rowTemplate.content.firstElementChild.cloneNode(true);
+        const modeSelect = row.querySelector(".mode-select");
+        const materialSearch = row.querySelector(".material-search");
+        const materialId = row.querySelector(".material-id");
+
+        function applyMode() {
+            const isExisting = modeSelect.value === "existing";
+            materialSearch.disabled = !isExisting;
+            row.querySelectorAll(".part-code, .part-name, .specification, .unit").forEach((input) => {
+                input.readOnly = isExisting;
+            });
+            if (!isExisting) {
+                materialId.value = "";
+                materialSearch.value = "";
+                if (activeMaterialRow === row) {
+                    materialSuggestions.style.display = "none";
+                }
+                row.querySelectorAll(".part-code, .part-name, .specification, .unit").forEach((input) => {
+                    input.value = "";
+                });
+            }
+            refreshRow(row);
+        }
+
+        modeSelect.addEventListener("change", applyMode);
+        materialSearch.addEventListener("input", () => {
+            materialId.value = "";
+            renderSuggestions(row);
+        });
+        materialSearch.addEventListener("focus", () => {
+            materialSearch.select();
+            renderSuggestions(row);
+        });
+        materialSearch.addEventListener("mouseup", (event) => event.preventDefault());
+        materialSearch.addEventListener("blur", () => {
+            setTimeout(() => {
+                if (activeMaterialRow === row) {
+                    materialSuggestions.style.display = "none";
+                }
+            }, 120);
+        });
+
+        row.querySelectorAll(".cost-input").forEach((input) => {
+            input.addEventListener("input", () => refreshRow(row));
+            input.addEventListener("focus", () => input.select());
+            input.addEventListener("mouseup", (event) => event.preventDefault());
+        });
+        row.querySelector(".remove-row").addEventListener("click", () => {
+            if (activeMaterialRow === row) {
+                materialSuggestions.style.display = "none";
+            }
+            row.remove();
+            refreshTotals();
+        });
+
+        materialRows.appendChild(row);
+        applyMode();
+        refreshTotals();
+    }
+
+    addMaterialRow.addEventListener("click", addRow);
+    document.querySelectorAll(".cost-input").forEach((input) => {
+        input.addEventListener("input", refreshTotals);
+        input.addEventListener("focus", () => input.select());
+        input.addEventListener("mouseup", (event) => event.preventDefault());
+    });
+    addRow();
+</script>
+{% endblock %}

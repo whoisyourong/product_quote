@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}报价 #{{ quote.id }} - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <p class="pill">{{ "临时报价" if quote.quote_type == "temporary" else "BOM 报价" }} #{{ quote.id }}</p>
+        <h1>{{ quote.customer_name }}</h1>
+        <p class="muted">{{ quote.product_code }} · {{ quote.product_name }} · {{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a class="button ghost" href="/quotes">返回档案</a>
+        <form action="/quotes/{{ quote.id }}/delete" method="POST" onsubmit="return confirm('确定删除报价 #{{ quote.id }} 吗？删除后将不再显示在报价档案中。');">
+            <button class="button danger" type="submit">删除报价</button>
+        </form>
+    </div>
+</div>
+
+<section class="grid-3">
+    <div class="metric"><span>材料成本快照</span><strong>{{ "%.4f"|format(quote.material_cost or 0) }}</strong></div>
+    <div class="metric"><span>工艺费用快照</span><strong>{{ "%.4f"|format(quote.process_cost or 0) }}</strong></div>
+    <div class="metric"><span>最终报价</span><strong>{{ "%.4f"|format(quote.final_price or 0) }}</strong></div>
+</section>
+
+<section class="grid-3" style="margin-top: 14px;">
+    <div class="metric"><span>材料小计快照</span><strong>{{ "%.4f"|format(product_snapshot.get("raw_material_cost", 0)) }}</strong></div>
+    <div class="metric"><span>材料损耗 1%</span><strong>{{ "%.4f"|format(product_snapshot.get("material_loss_cost", 0)) }}</strong></div>
+    <div class="metric"><span>含损耗材料成本</span><strong>{{ "%.4f"|format(quote.material_cost or 0) }}</strong></div>
+</section>
+
+<section class="grid-2" style="margin-top: 18px;">
+    <div class="quote-card">
+        <h2>客户与产品</h2>
+        <p><strong>客户：</strong>{{ quote.customer_name }}</p>
+        <p><strong>产品：</strong>{{ quote.product_code }} / {{ quote.product_name }}</p>
+        <p><strong>规格：</strong>{{ quote.specification or "-" }}</p>
+        <p><strong>备注：</strong>{{ quote.note or "-" }}</p>
+    </div>
+    <div class="quote-card">
+        <h2>工艺快照</h2>
+        <p><strong>贴片：</strong>{{ product_snapshot.get("smt_points", 0) }} × {{ "%.4f"|format(product_snapshot.get("smt_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("smt_cost", 0)) }}</p>
+        <p><strong>焊接：</strong>{{ product_snapshot.get("welding_points", 0) }} × {{ "%.4f"|format(product_snapshot.get("welding_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("welding_cost", 0)) }}</p>
+        <p><strong>绑定：</strong>{{ product_snapshot.get("binding_wires", 0) }} × {{ "%.4f"|format(product_snapshot.get("binding_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("binding_cost", 0)) }}</p>
+        <p><strong>加工费：</strong>{{ "%.4f"|format(product_snapshot.get("labor_cost", 0)) }}</p>
+        <p><strong>包装费：</strong>{{ "%.4f"|format(product_snapshot.get("packaging_cost", 0)) }}</p>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-head"><h2>材料价格快照</h2></div>
+    {% if materials_snapshot %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>子件编码</th>
+                    <th>子件品名</th>
+                    <th>规格</th>
+                    <th>数量</th>
+                    <th>当时单价</th>
+                    <th>当时金额</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in materials_snapshot %}
+                <tr>
+                    <td>{{ item.part_code }}</td>
+                    <td>{{ item.part_name }}</td>
+                    <td>{{ item.specification or "-" }}</td>
+                    <td>{{ "%.4f"|format(item.quantity) }}</td>
+                    <td>{{ "%.4f"|format(item.price) }}</td>
+                    <td>{{ "%.4f"|format(item.line_cost) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">没有材料快照</div>
+    {% endif %}
+</section>
+{% endblock %}

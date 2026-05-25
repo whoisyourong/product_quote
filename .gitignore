@@ -1,0 +1,36 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Flask local data
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local configuration and secrets
+.env
+.env.*
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Test and tooling cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

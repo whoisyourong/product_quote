@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}材料价格 - 报价工作台{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <div>
+        <h1>材料价格</h1>
+        <p class="muted">这里只维护材料当前价格。产品实时成本会立即使用这些价格重新计算。</p>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel-body">
+        <div class="form-grid">
+            <label>
+                子件品名
+                <input id="nameFilter" type="text" placeholder="输入品名筛选">
+            </label>
+            <label>
+                规格
+                <input id="specFilter" type="text" placeholder="输入规格筛选">
+            </label>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    {% if materials %}
+    <form method="POST">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>子件编码</th>
+                        <th>子件品名</th>
+                        <th>规格</th>
+                        <th>单位</th>
+                        <th>当前单价</th>
+                        <th>更新时间</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in materials %}
+                    <tr class="material-row" data-name="{{ material.part_name }}" data-spec="{{ material.specification or '' }}">
+                        <td>{{ material.part_code }}</td>
+                        <td>{{ material.part_name }}</td>
+                        <td>{{ material.specification or "-" }}</td>
+                        <td>{{ material.unit or "-" }}</td>
+                        <td style="min-width: 140px;">
+                            <input class="price-input" type="number" step="0.0001" name="price_{{ material.id }}" value="{{ material.price or 0 }}" data-material-id="{{ material.id }}" data-original-value="{{ material.price or 0 }}">
+                        </td>
+                        <td class="updated-at">{{ material.updated_at.strftime("%Y-%m-%d %H:%M") if material.updated_at else "-" }}</td>
+                        <td class="save-status muted">自动保存</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </form>
+    {% else %}
+    <div class="empty">导入 BOM 后会自动生成材料主数据</div>
+    {% endif %}
+</section>
+
+<script>
+    document.querySelectorAll(".price-input").forEach((input) => {
+        input.addEventListener("focus", () => input.select());
+        input.addEventListener("mouseup", (event) => event.preventDefault());
+        input.addEventListener("blur", async () => {
+            if (input.value === input.dataset.originalValue) {
+                return;
+            }
+
+            const row = input.closest("tr");
+            const status = row.querySelector(".save-status");
+            const updatedAt = row.querySelector(".updated-at");
+            status.textContent = "保存中...";
+            status.classList.add("muted");
+
+            try {
+                const response = await fetch(`/materials/${input.dataset.materialId}/price`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({price: input.value})
+                });
+
+                if (!response.ok) {
+                    throw new Error("保存失败");
+                }
+
+                const result = await response.json();
+                input.dataset.originalValue = String(result.price);
+                input.value = result.price;
+                updatedAt.textContent = result.updated_at;
+                status.textContent = "已保存";
+                status.classList.remove("muted");
+            } catch (error) {
+                status.textContent = "保存失败";
+                status.classList.remove("muted");
+            }
+        });
+    });
+
+    const nameFilter = document.getElementById("nameFilter");
+    const specFilter = document.getElementById("specFilter");
+    const rows = document.querySelectorAll(".material-row");
+
+    function applyFilters() {
+        const nameValue = nameFilter.value.trim().toLowerCase();
+        const specValue = specFilter.value.trim().toLowerCase();
+
+        rows.forEach((row) => {
+            const nameMatched = row.dataset.name.toLowerCase().includes(nameValue);
+            const specMatched = row.dataset.spec.toLowerCase().includes(specValue);
+            row.style.display = nameMatched && specMatched ? "" : "none";
+        });
+    }
+
+    nameFilter.addEventListener("input", applyFilters);
+    specFilter.addEventListener("input", applyFilters);
+</script>
+{% endblock %}

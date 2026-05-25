@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}总览 - 报价工作台{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="pill">BOM Excel 导入</p>
+        <h1>从一张产品 BOM，生成可追溯的报价体系。</h1>
+        <p class="muted">导入固定格式 Excel 后，系统会拆分产品信息、材料主数据和产品材料组成；材料价格变化会实时影响产品成本，但历史报价会保存当时快照。</p>
+    </div>
+    <form action="/import" method="POST" enctype="multipart/form-data" class="stack">
+        <label>
+            选择产品 BOM Excel
+            <input type="file" name="excel_file" accept=".xlsx" required>
+        </label>
+        <button class="button" type="submit">导入并生成产品</button>
+    </form>
+</section>
+
+<section class="grid-3">
+    <div class="metric"><span>产品数量</span><strong>{{ product_count }}</strong></div>
+    <div class="metric"><span>材料主数据</span><strong>{{ material_count }}</strong></div>
+    <div class="metric"><span>报价档案</span><strong>{{ quote_count }}</strong></div>
+</section>
+
+<section class="panel" style="margin-top: 18px;">
+    <div class="panel-head">
+        <h2>最近导入产品</h2>
+        <a class="button ghost" href="/products">查看产品</a>
+    </div>
+    {% if products %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>产品编码</th>
+                    <th>品名</th>
+                    <th>规格</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.product_code }}</td>
+                    <td>{{ product.product_name }}</td>
+                    <td>{{ product.specification or "-" }}</td>
+                    <td><a class="button ghost" href="/products/{{ product.id }}">进入</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">还没有导入产品 BOM</div>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>最近报价</h2>
+        <a class="button ghost" href="/quotes">查看档案</a>
+    </div>
+    {% if recent_quotes %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>客户</th>
+                    <th>产品</th>
+                    <th>成本</th>
+                    <th>报价</th>
+                    <th>日期</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quote in recent_quotes %}
+                <tr>
+                    <td>{{ quote.customer_name }}</td>
+                    <td>{{ quote.product_code }}</td>
+                    <td>{{ "%.2f"|format(quote.calculated_cost or 0) }}</td>
+                    <td>{{ "%.2f"|format(quote.final_price or 0) }}</td>
+                    <td>{{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty">暂无报价记录</div>
+    {% endif %}
+</section>
+{% endblock %}
