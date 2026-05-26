@@ -126,9 +126,9 @@
     </style>
 
     <section class="grid-3">
-        <div class="metric"><span>材料小计</span><strong id="rawMaterialCost">0.0000</strong></div>
-        <div class="metric"><span>材料损耗 1%</span><strong id="materialLossCost">0.0000</strong></div>
-        <div class="metric"><span>预估总成本</span><strong id="totalCost">0.0000</strong></div>
+        <div class="metric"><span>材料小计</span><strong id="rawMaterialCost">0.00</strong></div>
+        <div class="metric"><span>材料损耗 1%</span><strong id="materialLossCost">0.00</strong></div>
+        <div class="metric"><span>预估总成本</span><strong id="totalCost">0.00</strong></div>
     </section>
 
     <section class="panel" style="margin-top: 18px;">
@@ -148,11 +148,11 @@
         <div class="panel-head"><h2>工艺字段</h2></div>
         <div class="panel-body">
             <div class="form-grid">
-                <label>贴片点数<input class="cost-input" type="number" name="smt_points" value="0"></label>
-                <label>焊接点数<input class="cost-input" type="number" name="welding_points" value="0"></label>
-                <label>绑定线数<input class="cost-input" type="number" name="binding_wires" value="0"></label>
-                <label>加工费<input class="cost-input" type="number" step="0.0001" name="labor_cost" value="0"></label>
-                <label>包装费<input class="cost-input" type="number" step="0.0001" name="packaging_cost" value="0"></label>
+                <label>贴片点数<input class="cost-input" type="number" step="1" name="smt_points" value="0"></label>
+                <label>焊接点数<input class="cost-input" type="number" step="1" name="welding_points" value="0"></label>
+                <label>绑定线数<input class="cost-input" type="number" step="1" name="binding_wires" value="0"></label>
+                <label>加工费<input class="cost-input" type="number" step="0.01" name="labor_cost" value="0.00"></label>
+                <label>包装费<input class="cost-input" type="number" step="0.01" name="packaging_cost" value="0.00"></label>
             </div>
         </div>
     </section>
@@ -212,9 +212,9 @@
         <td><input name="part_name" class="part-name" type="text" required></td>
         <td><input name="material_specification" class="specification" type="text"></td>
         <td><input name="unit" class="unit" type="text"></td>
-        <td><input name="quantity" class="quantity cost-input" type="number" step="0.0001" value="1" required></td>
-        <td><input name="price" class="price cost-input" type="number" step="0.0001" value="0" required></td>
-        <td class="line-cost">0.0000</td>
+        <td><input name="quantity" class="quantity cost-input" type="number" step="1" value="1" required></td>
+        <td><input name="price" class="price cost-input" type="number" step="0.01" value="0.00" required></td>
+        <td class="line-cost">0.00</td>
         <td><button class="button ghost remove-row" type="button">删除</button></td>
     </tr>
 </template>
@@ -235,6 +235,10 @@
         return Number.isFinite(parsed) ? parsed : 0;
     }
 
+    function quantityValue(value) {
+        return Math.round(numberValue(value));
+    }
+
     function materialText(material) {
         return `${material.part_code} ${material.part_name} ${material.specification} ${material.unit}`.toLowerCase();
     }
@@ -246,7 +250,7 @@
         row.querySelector(".part-name").value = material.part_name;
         row.querySelector(".specification").value = material.specification;
         row.querySelector(".unit").value = material.unit;
-        row.querySelector(".price").value = material.price;
+        row.querySelector(".price").value = Number(material.price || 0).toFixed(2);
         materialSuggestions.style.display = "none";
         refreshRow(row);
     }
@@ -274,7 +278,7 @@
             matched.forEach((material) => {
                 const item = document.createElement("div");
                 item.className = "material-suggestion";
-                item.innerHTML = `<strong>${material.part_code} / ${material.part_name}</strong><span>${material.specification || "-"} · ${material.unit || "-"} · ${Number(material.price || 0).toFixed(4)}</span>`;
+                item.innerHTML = `<strong>${material.part_code} / ${material.part_name}</strong><span>${material.specification || "-"} · ${material.unit || "-"} · ${Number(material.price || 0).toFixed(2)}</span>`;
                 item.addEventListener("mousedown", (event) => {
                     event.preventDefault();
                     applyMaterial(row, material);
@@ -291,16 +295,16 @@
     }
 
     function refreshRow(row) {
-        const quantity = numberValue(row.querySelector(".quantity").value);
+        const quantity = quantityValue(row.querySelector(".quantity").value);
         const price = numberValue(row.querySelector(".price").value);
-        row.querySelector(".line-cost").textContent = (quantity * price).toFixed(4);
+        row.querySelector(".line-cost").textContent = (quantity * price).toFixed(2);
         refreshTotals();
     }
 
     function refreshTotals() {
         let rawMaterialCost = 0;
         document.querySelectorAll(".material-row").forEach((row) => {
-            rawMaterialCost += numberValue(row.querySelector(".quantity").value) * numberValue(row.querySelector(".price").value);
+            rawMaterialCost += quantityValue(row.querySelector(".quantity").value) * numberValue(row.querySelector(".price").value);
         });
 
         const materialLossCost = rawMaterialCost * 0.01;
@@ -310,9 +314,9 @@
         const bindingCost = numberValue(document.querySelector("[name='binding_wires']").value) * rates.binding;
         const processCost = smtCost + weldingCost + bindingCost + numberValue(document.querySelector("[name='labor_cost']").value) + numberValue(document.querySelector("[name='packaging_cost']").value);
 
-        document.getElementById("rawMaterialCost").textContent = rawMaterialCost.toFixed(4);
-        document.getElementById("materialLossCost").textContent = materialLossCost.toFixed(4);
-        document.getElementById("totalCost").textContent = (materialCost + processCost).toFixed(4);
+        document.getElementById("rawMaterialCost").textContent = rawMaterialCost.toFixed(2);
+        document.getElementById("materialLossCost").textContent = materialLossCost.toFixed(2);
+        document.getElementById("totalCost").textContent = (materialCost + processCost).toFixed(2);
     }
 
     function addRow() {
@@ -363,7 +367,14 @@
             input.addEventListener("focus", () => input.select());
             input.addEventListener("mouseup", (event) => event.preventDefault());
         });
+        row.querySelector(".quantity").addEventListener("blur", () => {
+            row.querySelector(".quantity").value = quantityValue(row.querySelector(".quantity").value);
+            refreshRow(row);
+        });
         row.querySelector(".remove-row").addEventListener("click", () => {
+            if (!confirm("确定删除这行材料吗？")) {
+                return;
+            }
             if (activeMaterialRow === row) {
                 materialSuggestions.style.display = "none";
             }

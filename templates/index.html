@@ -79,8 +79,8 @@
                 <tr>
                     <td>{{ quote.customer_name }}</td>
                     <td>{{ quote.product_code }}</td>
-                    <td>{{ "%.2f"|format(quote.calculated_cost or 0) }}</td>
-                    <td>{{ "%.2f"|format(quote.final_price or 0) }}</td>
+                    <td>{{ (quote.calculated_cost or 0)|money }}</td>
+                    <td>{{ (quote.final_price or 0)|money }}</td>
                     <td>{{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</td>
                 </tr>
                 {% endfor %}

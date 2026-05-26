@@ -23,6 +23,34 @@ NS = {
 }
 
 
+def round_half_up(value, digits=2):
+    from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+    try:
+        number = Decimal(str(value or 0))
+    except (InvalidOperation, ValueError):
+        number = Decimal("0")
+    quant = Decimal("1") if digits == 0 else Decimal("1").scaleb(-digits)
+    return number.quantize(quant, rounding=ROUND_HALF_UP)
+
+
+def format_money(value):
+    return f"{round_half_up(value, 2):.2f}"
+
+
+def format_material_price(value):
+    return f"{round_half_up(value, 4):.4f}"
+
+
+def format_quantity(value):
+    return str(int(round_half_up(value, 0)))
+
+
+app.jinja_env.filters["money"] = format_money
+app.jinja_env.filters["material_price"] = format_material_price
+app.jinja_env.filters["quantity"] = format_quantity
+
+
 def ensure_schema():
     db.create_all()
     inspector = inspect(db.engine)
@@ -83,6 +111,10 @@ def parse_number(value, default=0):
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def parse_integer(value, default=0):
+    return int(round_half_up(parse_number(value, default), 0))
 
 
 def split_label(value, label):
@@ -168,7 +200,7 @@ def import_bom(file_storage):
         material.unit = str(row[3] or "").strip()
 
         product.bom_items.append(
-            ProductMaterial(material=material, quantity=parse_number(row[4]))
+            ProductMaterial(material=material, quantity=parse_integer(row[4]))
         )
         imported_count += 1
 
@@ -198,6 +230,7 @@ def product_cost(product):
         raw_material_cost += line_cost
         material_rows.append(
             {
+                "id": item.id,
                 "part_code": item.material.part_code,
                 "part_name": item.material.part_name,
                 "specification": item.material.specification,
@@ -327,9 +360,9 @@ def products():
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     if request.method == "POST":
-        product.smt_points = int(parse_number(request.form.get("smt_points")))
-        product.welding_points = int(parse_number(request.form.get("welding_points")))
-        product.binding_wires = int(parse_number(request.form.get("binding_wires")))
+        product.smt_points = parse_integer(request.form.get("smt_points"))
+        product.welding_points = parse_integer(request.form.get("welding_points"))
+        product.binding_wires = parse_integer(request.form.get("binding_wires"))
         product.labor_cost = parse_number(request.form.get("labor_cost"))
         product.packaging_cost = parse_number(request.form.get("packaging_cost"))
         db.session.commit()
@@ -346,6 +379,17 @@ def product_detail(product_id):
         material_rows=material_rows,
         process_detail=process_detail,
     )
+
+
+@app.route("/products/<int:product_id>/bom-items/<int:item_id>/delete", methods=["POST"])
+def delete_product_bom_item(product_id, item_id):
+    product = Product.query.get_or_404(product_id)
+    item = ProductMaterial.query.filter_by(id=item_id, product_id=product.id).first_or_404()
+    material_name = item.material.part_name if item.material else ""
+    db.session.delete(item)
+    db.session.commit()
+    flash(f"BOM 材料 {material_name} 已删除。", "success")
+    return redirect(url_for("product_detail", product_id=product.id))
 
 
 @app.route("/materials", methods=["GET", "POST"])
@@ -378,6 +422,21 @@ def update_material_price(material_id):
             "updated_at": material.updated_at.strftime("%Y-%m-%d %H:%M"),
         }
     )
+
+
+@app.route("/materials/<int:material_id>/delete", methods=["POST"])
+def delete_material(material_id):
+    material = Material.query.get_or_404(material_id)
+    material_name = material.part_name
+    linked_count = ProductMaterial.query.filter_by(material_id=material.id).count()
+    ProductMaterial.query.filter_by(material_id=material.id).delete(synchronize_session=False)
+    db.session.delete(material)
+    db.session.commit()
+    if linked_count:
+        flash(f"材料 {material_name} 已删除，并同步移除了 {linked_count} 条产品 BOM 引用。", "success")
+    else:
+        flash(f"材料 {material_name} 已删除。", "success")
+    return redirect(url_for("materials"))
 
 
 @app.route("/process-rates")
@@ -442,7 +501,7 @@ def temporary_quote():
     material_rows = []
     raw_material_cost = 0
     for index, row_mode in enumerate(row_modes):
-        quantity = parse_number(quantities[index] if index < len(quantities) else 0)
+        quantity = parse_integer(quantities[index] if index < len(quantities) else 0)
         price = parse_number(prices[index] if index < len(prices) else 0)
         if quantity <= 0:
             continue
@@ -482,9 +541,9 @@ def temporary_quote():
             rate_values=rate_values,
         )
 
-    smt_points = int(parse_number(request.form.get("smt_points")))
-    welding_points = int(parse_number(request.form.get("welding_points")))
-    binding_wires = int(parse_number(request.form.get("binding_wires")))
+    smt_points = parse_integer(request.form.get("smt_points"))
+    welding_points = parse_integer(request.form.get("welding_points"))
+    binding_wires = parse_integer(request.form.get("binding_wires"))
     labor_cost = parse_number(request.form.get("labor_cost"))
     packaging_cost = parse_number(request.form.get("packaging_cost"))
     material_cost, process_cost, total_cost, process_detail = calculate_process_cost(

@@ -99,8 +99,8 @@
                     <td>{{ quote.product_code or "-" }}</td>
                     <td>{{ quote.product_name or "-" }}</td>
                     <td>{{ quote.specification or "-" }}</td>
-                    <td>{{ "%.4f"|format(quote.calculated_cost or 0) }}</td>
-                    <td><strong>{{ "%.4f"|format(quote.final_price or 0) }}</strong></td>
+                    <td>{{ (quote.calculated_cost or 0)|money }}</td>
+                    <td><strong>{{ (quote.final_price or 0)|money }}</strong></td>
                     <td>{{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</td>
                     <td><a class="button ghost" href="/quotes/{{ quote.id }}">详情</a></td>
                 </tr>

@@ -18,15 +18,15 @@
 </div>
 
 <section class="grid-3">
-    <div class="metric"><span>材料成本快照</span><strong>{{ "%.4f"|format(quote.material_cost or 0) }}</strong></div>
-    <div class="metric"><span>工艺费用快照</span><strong>{{ "%.4f"|format(quote.process_cost or 0) }}</strong></div>
-    <div class="metric"><span>最终报价</span><strong>{{ "%.4f"|format(quote.final_price or 0) }}</strong></div>
+    <div class="metric"><span>材料成本快照</span><strong>{{ (quote.material_cost or 0)|money }}</strong></div>
+    <div class="metric"><span>工艺费用快照</span><strong>{{ (quote.process_cost or 0)|money }}</strong></div>
+    <div class="metric"><span>最终报价</span><strong>{{ (quote.final_price or 0)|money }}</strong></div>
 </section>
 
 <section class="grid-3" style="margin-top: 14px;">
-    <div class="metric"><span>材料小计快照</span><strong>{{ "%.4f"|format(product_snapshot.get("raw_material_cost", 0)) }}</strong></div>
-    <div class="metric"><span>材料损耗 1%</span><strong>{{ "%.4f"|format(product_snapshot.get("material_loss_cost", 0)) }}</strong></div>
-    <div class="metric"><span>含损耗材料成本</span><strong>{{ "%.4f"|format(quote.material_cost or 0) }}</strong></div>
+    <div class="metric"><span>材料小计快照</span><strong>{{ product_snapshot.get("raw_material_cost", 0)|money }}</strong></div>
+    <div class="metric"><span>材料损耗 1%</span><strong>{{ product_snapshot.get("material_loss_cost", 0)|money }}</strong></div>
+    <div class="metric"><span>含损耗材料成本</span><strong>{{ (quote.material_cost or 0)|money }}</strong></div>
 </section>
 
 <section class="grid-2" style="margin-top: 18px;">
@@ -39,11 +39,11 @@
     </div>
     <div class="quote-card">
         <h2>工艺快照</h2>
-        <p><strong>贴片：</strong>{{ product_snapshot.get("smt_points", 0) }} × {{ "%.4f"|format(product_snapshot.get("smt_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("smt_cost", 0)) }}</p>
-        <p><strong>焊接：</strong>{{ product_snapshot.get("welding_points", 0) }} × {{ "%.4f"|format(product_snapshot.get("welding_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("welding_cost", 0)) }}</p>
-        <p><strong>绑定：</strong>{{ product_snapshot.get("binding_wires", 0) }} × {{ "%.4f"|format(product_snapshot.get("binding_unit_price", 0)) }} = {{ "%.4f"|format(product_snapshot.get("binding_cost", 0)) }}</p>
-        <p><strong>加工费：</strong>{{ "%.4f"|format(product_snapshot.get("labor_cost", 0)) }}</p>
-        <p><strong>包装费：</strong>{{ "%.4f"|format(product_snapshot.get("packaging_cost", 0)) }}</p>
+        <p><strong>贴片：</strong>{{ product_snapshot.get("smt_points", 0)|quantity }} × {{ product_snapshot.get("smt_unit_price", 0)|money }} = {{ product_snapshot.get("smt_cost", 0)|money }}</p>
+        <p><strong>焊接：</strong>{{ product_snapshot.get("welding_points", 0)|quantity }} × {{ product_snapshot.get("welding_unit_price", 0)|money }} = {{ product_snapshot.get("welding_cost", 0)|money }}</p>
+        <p><strong>绑定：</strong>{{ product_snapshot.get("binding_wires", 0)|quantity }} × {{ product_snapshot.get("binding_unit_price", 0)|money }} = {{ product_snapshot.get("binding_cost", 0)|money }}</p>
+        <p><strong>加工费：</strong>{{ product_snapshot.get("labor_cost", 0)|money }}</p>
+        <p><strong>包装费：</strong>{{ product_snapshot.get("packaging_cost", 0)|money }}</p>
     </div>
 </section>
 
@@ -68,9 +68,9 @@
                     <td>{{ item.part_code }}</td>
                     <td>{{ item.part_name }}</td>
                     <td>{{ item.specification or "-" }}</td>
-                    <td>{{ "%.4f"|format(item.quantity) }}</td>
-                    <td>{{ "%.4f"|format(item.price) }}</td>
-                    <td>{{ "%.4f"|format(item.line_cost) }}</td>
+                    <td>{{ item.quantity|quantity }}</td>
+                    <td>{{ item.price|money }}</td>
+                    <td>{{ item.line_cost|money }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

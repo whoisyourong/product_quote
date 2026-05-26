@@ -13,15 +13,15 @@
 </div>
 
 <section class="grid-3">
-    <div class="metric"><span>材料成本</span><strong>{{ "%.4f"|format(material_cost) }}</strong></div>
-    <div class="metric"><span>工艺费用</span><strong>{{ "%.4f"|format(process_cost) }}</strong></div>
-    <div class="metric"><span>实时总成本</span><strong>{{ "%.4f"|format(total_cost) }}</strong></div>
+    <div class="metric"><span>材料成本</span><strong>{{ material_cost|money }}</strong></div>
+    <div class="metric"><span>工艺费用</span><strong>{{ process_cost|money }}</strong></div>
+    <div class="metric"><span>实时总成本</span><strong>{{ total_cost|money }}</strong></div>
 </section>
 
 <section class="grid-3" style="margin-top: 14px;">
-    <div class="metric"><span>材料小计</span><strong>{{ "%.4f"|format(process_detail.raw_material_cost) }}</strong></div>
-    <div class="metric"><span>材料损耗 1%</span><strong>{{ "%.4f"|format(process_detail.material_loss_cost) }}</strong></div>
-    <div class="metric"><span>含损耗材料成本</span><strong>{{ "%.4f"|format(material_cost) }}</strong></div>
+    <div class="metric"><span>材料小计</span><strong>{{ process_detail.raw_material_cost|money }}</strong></div>
+    <div class="metric"><span>材料损耗 1%</span><strong>{{ process_detail.material_loss_cost|money }}</strong></div>
+    <div class="metric"><span>含损耗材料成本</span><strong>{{ material_cost|money }}</strong></div>
 </section>
 
 <section class="grid-2" style="margin-top: 18px;">
@@ -33,11 +33,11 @@
         <div class="panel-body">
             <form method="POST">
                 <div class="form-grid">
-                    <label>贴片点数<input type="number" name="smt_points" value="{{ product.smt_points or 0 }}"></label>
-                    <label>焊接点数<input type="number" name="welding_points" value="{{ product.welding_points or 0 }}"></label>
-                    <label>绑定线数<input type="number" name="binding_wires" value="{{ product.binding_wires or 0 }}"></label>
-                    <label>加工费<input type="number" step="0.0001" name="labor_cost" value="{{ product.labor_cost or 0 }}"></label>
-                    <label>包装费<input type="number" step="0.0001" name="packaging_cost" value="{{ product.packaging_cost or 0 }}"></label>
+                    <label>贴片点数<input type="number" step="1" name="smt_points" value="{{ (product.smt_points or 0)|quantity }}"></label>
+                    <label>焊接点数<input type="number" step="1" name="welding_points" value="{{ (product.welding_points or 0)|quantity }}"></label>
+                    <label>绑定线数<input type="number" step="1" name="binding_wires" value="{{ (product.binding_wires or 0)|quantity }}"></label>
+                    <label>加工费<input type="number" step="0.01" name="labor_cost" value="{{ (product.labor_cost or 0)|money }}"></label>
+                    <label>包装费<input type="number" step="0.01" name="packaging_cost" value="{{ (product.packaging_cost or 0)|money }}"></label>
                 </div>
                 <div class="table-wrap" style="margin-top: 16px;">
                     <table>
@@ -52,21 +52,21 @@
                         <tbody>
                             <tr>
                                 <td>贴片</td>
-                                <td>{{ process_detail.smt_points }}</td>
-                                <td>{{ "%.4f"|format(process_detail.smt_unit_price) }}</td>
-                                <td>{{ "%.4f"|format(process_detail.smt_cost) }}</td>
+                                <td>{{ process_detail.smt_points|quantity }}</td>
+                                <td>{{ process_detail.smt_unit_price|money }}</td>
+                                <td>{{ process_detail.smt_cost|money }}</td>
                             </tr>
                             <tr>
                                 <td>焊接</td>
-                                <td>{{ process_detail.welding_points }}</td>
-                                <td>{{ "%.4f"|format(process_detail.welding_unit_price) }}</td>
-                                <td>{{ "%.4f"|format(process_detail.welding_cost) }}</td>
+                                <td>{{ process_detail.welding_points|quantity }}</td>
+                                <td>{{ process_detail.welding_unit_price|money }}</td>
+                                <td>{{ process_detail.welding_cost|money }}</td>
                             </tr>
                             <tr>
                                 <td>绑定</td>
-                                <td>{{ process_detail.binding_wires }}</td>
-                                <td>{{ "%.4f"|format(process_detail.binding_unit_price) }}</td>
-                                <td>{{ "%.4f"|format(process_detail.binding_cost) }}</td>
+                                <td>{{ process_detail.binding_wires|quantity }}</td>
+                                <td>{{ process_detail.binding_unit_price|money }}</td>
+                                <td>{{ process_detail.binding_cost|money }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -106,6 +106,7 @@
                     <th>数量</th>
                     <th>当前单价</th>
                     <th>金额</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -115,9 +116,14 @@
                     <td>{{ item.part_name }}</td>
                     <td>{{ item.specification or "-" }}</td>
                     <td>{{ item.unit or "-" }}</td>
-                    <td>{{ "%.4f"|format(item.quantity) }}</td>
-                    <td>{{ "%.4f"|format(item.price) }}</td>
-                    <td>{{ "%.4f"|format(item.line_cost) }}</td>
+                    <td>{{ item.quantity|quantity }}</td>
+                    <td>{{ item.price|money }}</td>
+                    <td>{{ item.line_cost|money }}</td>
+                    <td>
+                        <form action="/products/{{ product.id }}/bom-items/{{ item.id }}/delete" method="POST" onsubmit="return confirm('确定删除这项 BOM 材料吗？');">
+                            <button class="button danger" type="submit">删除</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -27,7 +27,7 @@
                 <tr>
                     <td>{{ rate.rate_name }}</td>
                     <td style="min-width: 160px;">
-                        <input class="rate-input" type="number" step="0.0001" value="{{ rate.unit_price or 0 }}" data-rate-id="{{ rate.id }}" data-original-value="{{ rate.unit_price or 0 }}">
+                        <input class="rate-input" type="number" step="0.01" value="{{ (rate.unit_price or 0)|money }}" data-rate-id="{{ rate.id }}" data-original-value="{{ (rate.unit_price or 0)|money }}">
                     </td>
                     <td class="updated-at">{{ rate.updated_at.strftime("%Y-%m-%d %H:%M") if rate.updated_at else "-" }}</td>
                     <td class="save-status muted">自动保存</td>
@@ -68,8 +68,8 @@
                 }
 
                 const result = await response.json();
-                input.dataset.originalValue = String(result.unit_price);
-                input.value = result.unit_price;
+                input.dataset.originalValue = Number(result.unit_price || 0).toFixed(2);
+                input.value = Number(result.unit_price || 0).toFixed(2);
                 updatedAt.textContent = result.updated_at;
                 status.textContent = "已保存";
                 status.classList.remove("muted");

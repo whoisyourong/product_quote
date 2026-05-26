@@ -44,9 +44,9 @@
                     <td>{{ product.product_code }}</td>
                     <td>{{ product.product_name }}</td>
                     <td>{{ product.specification or "-" }}</td>
-                    <td>{{ "%.4f"|format(cost[0]) }}</td>
-                    <td>{{ "%.4f"|format(cost[1]) }}</td>
-                    <td><strong>{{ "%.4f"|format(cost[2]) }}</strong></td>
+                    <td>{{ cost[0]|money }}</td>
+                    <td>{{ cost[1]|money }}</td>
+                    <td><strong>{{ cost[2]|money }}</strong></td>
                     <td><a class="button ghost" href="/products/{{ product.id }}">报价</a></td>
                 </tr>
                 {% endfor %}
