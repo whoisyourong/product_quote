@@ -425,6 +425,37 @@ def materials():
     return render_template("materials.html", materials=material_list)
 
 
+@app.route("/materials/add", methods=["POST"])
+def add_material():
+    part_code = (request.form.get("part_code") or "").strip()
+    part_name = (request.form.get("part_name") or "").strip()
+    specification = (request.form.get("specification") or "").strip()
+    unit = (request.form.get("unit") or "").strip()
+    price = parse_number(request.form.get("price"))
+
+    if not part_code or not part_name:
+        flash("子件编码和子件品名不能为空。", "error")
+        return redirect(url_for("materials"))
+
+    existing = Material.query.filter_by(part_code=part_code).first()
+    if existing:
+        flash(f"子件编码 {part_code} 已存在，未重复添加。", "error")
+        return redirect(url_for("materials"))
+
+    material = Material(
+        part_code=part_code,
+        part_name=part_name,
+        specification=specification,
+        unit=unit,
+        price=price,
+        updated_at=datetime.utcnow(),
+    )
+    db.session.add(material)
+    db.session.commit()
+    flash(f"材料 {part_name} 已添加。", "success")
+    return redirect(url_for("materials"))
+
+
 @app.route("/materials/<int:material_id>/price", methods=["POST"])
 def update_material_price(material_id):
     material = Material.query.get_or_404(material_id)
