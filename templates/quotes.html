@@ -9,8 +9,9 @@
     }
 
     .quote-archive-table {
+        width: 100%;
         table-layout: fixed;
-        font-size: 12px;
+        font-size: 14px;
     }
 
     .quote-archive-table th,
@@ -22,25 +23,27 @@
     }
 
     .quote-archive-table th:nth-child(1),
-    .quote-archive-table td:nth-child(1) { width: 48px; }
+    .quote-archive-table td:nth-child(1) { width: 4%; }
     .quote-archive-table th:nth-child(2),
-    .quote-archive-table td:nth-child(2) { width: 70px; }
+    .quote-archive-table td:nth-child(2) { width: 6%; }
     .quote-archive-table th:nth-child(3),
-    .quote-archive-table td:nth-child(3) { width: 100px; }
+    .quote-archive-table td:nth-child(3) { width: 10%; }
     .quote-archive-table th:nth-child(4),
-    .quote-archive-table td:nth-child(4) { width: 105px; }
+    .quote-archive-table td:nth-child(4) { width: 15%; }
     .quote-archive-table th:nth-child(5),
-    .quote-archive-table td:nth-child(5) { width: 110px; }
+    .quote-archive-table td:nth-child(5) { width: 14%; }
     .quote-archive-table th:nth-child(6),
-    .quote-archive-table td:nth-child(6) { width: 110px; }
+    .quote-archive-table td:nth-child(6) { width: 14%; }
     .quote-archive-table th:nth-child(7),
-    .quote-archive-table td:nth-child(7) { width: 82px; }
+    .quote-archive-table td:nth-child(7) { width: 8%; }
     .quote-archive-table th:nth-child(8),
-    .quote-archive-table td:nth-child(8) { width: 82px; }
+    .quote-archive-table td:nth-child(8) { width: 8%; }
     .quote-archive-table th:nth-child(9),
-    .quote-archive-table td:nth-child(9) { width: 82px; }
+    .quote-archive-table td:nth-child(9) { width: 7%; }
     .quote-archive-table th:nth-child(10),
-    .quote-archive-table td:nth-child(10) { width: 58px; }
+    .quote-archive-table td:nth-child(10) { width: 9%; }
+    .quote-archive-table th:nth-child(11),
+    .quote-archive-table td:nth-child(11) { width: 5%; }
 
     .quote-archive-table .button {
         min-height: 30px;
@@ -86,6 +89,7 @@
                     <th>型号</th>
                     <th>当时成本</th>
                     <th>最终报价</th>
+                    <th>利润率</th>
                     <th>日期</th>
                     <th>查看</th>
                 </tr>
@@ -101,6 +105,7 @@
                     <td>{{ quote.specification or "-" }}</td>
                     <td>{{ (quote.calculated_cost or 0)|money }}</td>
                     <td><strong>{{ (quote.final_price or 0)|money }}</strong></td>
+                    <td>{{ quote_profit_margin(quote)|money }}%</td>
                     <td>{{ quote.quote_date.strftime("%Y-%m-%d") if quote.quote_date else "-" }}</td>
                     <td><a class="button ghost" href="/quotes/{{ quote.id }}">详情</a></td>
                 </tr>

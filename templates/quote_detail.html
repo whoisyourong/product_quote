@@ -26,7 +26,7 @@
 <section class="grid-3" style="margin-top: 14px;">
     <div class="metric"><span>材料小计快照</span><strong>{{ product_snapshot.get("raw_material_cost", 0)|money }}</strong></div>
     <div class="metric"><span>材料损耗 1%</span><strong>{{ product_snapshot.get("material_loss_cost", 0)|money }}</strong></div>
-    <div class="metric"><span>含损耗材料成本</span><strong>{{ (quote.material_cost or 0)|money }}</strong></div>
+    <div class="metric"><span>利润率</span><strong>{{ quote_profit_margin(quote)|money }}%</strong></div>
 </section>
 
 <section class="grid-2" style="margin-top: 18px;">

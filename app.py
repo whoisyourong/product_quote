@@ -78,6 +78,7 @@ def ensure_schema():
         "product_snapshot": "TEXT",
         "material_cost": "FLOAT",
         "process_cost": "FLOAT",
+        "profit_margin_percentage": "FLOAT",
         "note": "TEXT",
         "deleted_at": "DATETIME",
     }
@@ -115,6 +116,22 @@ def parse_number(value, default=0):
 
 def parse_integer(value, default=0):
     return int(round_half_up(parse_number(value, default), 0))
+
+
+def calculate_profit_margin(final_price, total_cost):
+    if final_price <= 0:
+        return 0
+    return (final_price - total_cost) / final_price * 100
+
+
+def quote_profit_margin(quote):
+    stored_margin = getattr(quote, "profit_margin_percentage", None)
+    if stored_margin is not None:
+        return stored_margin
+    return calculate_profit_margin(quote.final_price or 0, quote.calculated_cost or 0)
+
+
+app.jinja_env.globals["quote_profit_margin"] = quote_profit_margin
 
 
 def split_label(value, label):
@@ -554,8 +571,16 @@ def temporary_quote():
         labor_cost,
         packaging_cost,
     )
-    markup = parse_number(request.form.get("markup_percentage"))
-    final_price = total_cost * (1 + markup / 100)
+    final_price = parse_number(request.form.get("final_price"))
+    if final_price <= 0:
+        flash("最终报价金额必须大于 0。", "error")
+        return render_template(
+            "temporary_quote.html",
+            materials=materials,
+            material_options=material_options,
+            rate_values=rate_values,
+        )
+    profit_margin = calculate_profit_margin(final_price, total_cost)
     product_code = request.form.get("product_code") or next_temporary_product_code()
 
     quote = Quote(
@@ -569,7 +594,8 @@ def temporary_quote():
         material_cost=material_cost,
         process_cost=process_cost,
         calculated_cost=total_cost,
-        markup_percentage=markup,
+        markup_percentage=0,
+        profit_margin_percentage=profit_margin,
         final_price=final_price,
         note=request.form.get("note"),
         quote_date=datetime.utcnow(),
@@ -584,8 +610,11 @@ def temporary_quote():
 def create_quote(product_id):
     product = Product.query.get_or_404(product_id)
     material_cost, process_cost, total_cost, material_rows, process_detail = product_cost(product)
-    markup = parse_number(request.form.get("markup_percentage"))
-    final_price = total_cost * (1 + markup / 100)
+    final_price = parse_number(request.form.get("final_price"))
+    if final_price <= 0:
+        flash("最终报价金额必须大于 0。", "error")
+        return redirect(url_for("product_detail", product_id=product.id))
+    profit_margin = calculate_profit_margin(final_price, total_cost)
 
     quote = Quote(
         quote_type="bom",
@@ -604,7 +633,8 @@ def create_quote(product_id):
         material_cost=material_cost,
         process_cost=process_cost,
         calculated_cost=total_cost,
-        markup_percentage=markup,
+        markup_percentage=0,
+        profit_margin_percentage=profit_margin,
         final_price=final_price,
         note=request.form.get("note"),
         quote_date=datetime.utcnow(),

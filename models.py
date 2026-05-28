@@ -77,6 +77,7 @@ class Quote(db.Model):
     process_cost = db.Column(db.Float, default=0)
     calculated_cost = db.Column(db.Float, default=0)
     markup_percentage = db.Column(db.Float, default=0)
+    profit_margin_percentage = db.Column(db.Float, default=0)
     final_price = db.Column(db.Float, default=0)
     note = db.Column(db.Text)
     deleted_at = db.Column(db.DateTime)
