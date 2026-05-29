@@ -9,6 +9,7 @@
         <h1>从一张产品 BOM，生成可追溯的报价体系。</h1>
         <p class="muted">导入固定格式 Excel 后，系统会拆分产品信息、材料主数据和产品材料组成；材料价格变化会实时影响产品成本，但历史报价会保存当时快照。</p>
     </div>
+    {% if is_admin() %}
     <form action="/import" method="POST" enctype="multipart/form-data" class="stack">
         <label>
             选择产品 BOM Excel
@@ -16,6 +17,13 @@
         </label>
         <button class="button" type="submit">导入并生成产品</button>
     </form>
+    {% else %}
+    <div class="quote-card">
+        <h2>销售员权限</h2>
+        <p class="muted">可以查看成本与材料价格，并创建 BOM 报价或临时报价；材料价格和基础数据由管理员维护。</p>
+        <a class="button" href="/temporary-quote">创建临时报价</a>
+    </div>
+    {% endif %}
 </section>
 
 <section class="grid-3">

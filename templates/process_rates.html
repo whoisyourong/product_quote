@@ -27,10 +27,10 @@
                 <tr>
                     <td>{{ rate.rate_name }}</td>
                     <td style="min-width: 160px;">
-                        <input class="rate-input" type="number" step="0.01" value="{{ (rate.unit_price or 0)|money }}" data-rate-id="{{ rate.id }}" data-original-value="{{ (rate.unit_price or 0)|money }}">
+                        <input class="rate-input" type="number" step="0.01" value="{{ (rate.unit_price or 0)|money }}" data-rate-id="{{ rate.id }}" data-original-value="{{ (rate.unit_price or 0)|money }}"{% if not is_admin() %} readonly{% endif %}>
                     </td>
                     <td class="updated-at">{{ rate.updated_at.strftime("%Y-%m-%d %H:%M") if rate.updated_at else "-" }}</td>
-                    <td class="save-status muted">自动保存</td>
+                    <td class="save-status muted">{{ "自动保存" if is_admin() else "只读" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -42,7 +42,7 @@
 </section>
 
 <script>
-    document.querySelectorAll(".rate-input").forEach((input) => {
+    document.querySelectorAll(".rate-input:not([readonly])").forEach((input) => {
         input.addEventListener("focus", () => input.select());
         input.addEventListener("mouseup", (event) => event.preventDefault());
         input.addEventListener("blur", async () => {

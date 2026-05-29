@@ -1,19 +1,34 @@
 from datetime import datetime
+from functools import wraps
 import json
+import os
 import re
 import zipfile
 import xml.etree.ElementTree as ET
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import inspect, text
 
 from models import Material, ProcessRate, Product, ProductMaterial, Quote, db
 
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "dev-secret-key"
+app.config["SECRET_KEY"] = os.environ.get("QUOTE_SYSTEM_SECRET_KEY", "dev-secret-key")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///product_quote_system.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["USERS"] = {
+    "admin": {
+        "password": os.environ.get("QUOTE_SYSTEM_ADMIN_PASSWORD", "bxdAbaY"),
+        "role": "admin",
+        "display_name": "管理员",
+    },
+    "sales": {
+        "password": os.environ.get("QUOTE_SYSTEM_SALES_PASSWORD", "1234"),
+        "role": "sales",
+        "display_name": "销售员",
+    },
+}
 db.init_app(app)
 
 
@@ -132,6 +147,74 @@ def quote_profit_margin(quote):
 
 
 app.jinja_env.globals["quote_profit_margin"] = quote_profit_margin
+
+
+def current_user():
+    username = session.get("username")
+    if not username:
+        return None
+    user = app.config["USERS"].get(username)
+    if not user:
+        session.clear()
+        return None
+    return {
+        "username": username,
+        "role": user["role"],
+        "display_name": user["display_name"],
+    }
+
+
+def is_admin():
+    user = current_user()
+    return bool(user and user["role"] == "admin")
+
+
+def safe_redirect_target(value):
+    if value and value.startswith("/") and not value.startswith("//"):
+        return value
+    return url_for("index")
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if not current_user():
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if not current_user():
+            return redirect(url_for("login", next=request.path))
+        if not is_admin():
+            flash("当前账号没有执行该操作的权限。", "error")
+            if request.headers.get("Accept", "").find("application/json") >= 0 or request.is_json:
+                return jsonify({"ok": False, "error": "permission_denied"}), 403
+            return redirect(request.referrer or url_for("index"))
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+@app.context_processor
+def inject_auth():
+    return {
+        "current_user": current_user(),
+        "is_admin": is_admin,
+    }
+
+
+@app.before_request
+def require_login_for_app():
+    if request.endpoint in {"login", "static"}:
+        return None
+    if not current_user():
+        return redirect(url_for("login", next=request.path))
+    return None
 
 
 def split_label(value, label):
@@ -327,6 +410,32 @@ def next_temporary_product_code():
     return f"{today_prefix}{today_count + 1:02d}"
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user():
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        user = app.config["USERS"].get(username)
+        if user and password == user["password"]:
+            session.clear()
+            session["username"] = username
+            flash(f"已登录为{user['display_name']}。", "success")
+            return redirect(safe_redirect_target(request.form.get("next")))
+        flash("账号或密码不正确。", "error")
+
+    return render_template("login.html", next=request.args.get("next") or request.form.get("next") or "")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    flash("已退出登录。", "success")
+    return redirect(url_for("login"))
+
+
 @app.route("/")
 def index():
     products = Product.query.order_by(Product.imported_at.desc()).limit(6).all()
@@ -350,6 +459,7 @@ def index():
 
 
 @app.route("/import", methods=["POST"])
+@admin_required
 def import_excel():
     excel_file = request.files.get("excel_file")
     if not excel_file or not excel_file.filename:
@@ -377,6 +487,9 @@ def products():
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
     if request.method == "POST":
+        if not is_admin():
+            flash("当前账号没有修改产品工艺信息的权限。", "error")
+            return redirect(url_for("product_detail", product_id=product.id))
         product.smt_points = parse_integer(request.form.get("smt_points"))
         product.welding_points = parse_integer(request.form.get("welding_points"))
         product.binding_wires = parse_integer(request.form.get("binding_wires"))
@@ -399,6 +512,7 @@ def product_detail(product_id):
 
 
 @app.route("/products/<int:product_id>/bom-items/<int:item_id>/delete", methods=["POST"])
+@admin_required
 def delete_product_bom_item(product_id, item_id):
     product = Product.query.get_or_404(product_id)
     item = ProductMaterial.query.filter_by(id=item_id, product_id=product.id).first_or_404()
@@ -412,6 +526,9 @@ def delete_product_bom_item(product_id, item_id):
 @app.route("/materials", methods=["GET", "POST"])
 def materials():
     if request.method == "POST":
+        if not is_admin():
+            flash("当前账号没有修改材料价格的权限。", "error")
+            return redirect(url_for("materials"))
         for material in Material.query.all():
             value = request.form.get(f"price_{material.id}")
             if value is not None:
@@ -426,6 +543,7 @@ def materials():
 
 
 @app.route("/materials/add", methods=["POST"])
+@admin_required
 def add_material():
     part_code = (request.form.get("part_code") or "").strip()
     part_name = (request.form.get("part_name") or "").strip()
@@ -457,6 +575,7 @@ def add_material():
 
 
 @app.route("/materials/<int:material_id>/price", methods=["POST"])
+@admin_required
 def update_material_price(material_id):
     material = Material.query.get_or_404(material_id)
     data = request.get_json(silent=True) or {}
@@ -473,6 +592,7 @@ def update_material_price(material_id):
 
 
 @app.route("/materials/<int:material_id>/delete", methods=["POST"])
+@admin_required
 def delete_material(material_id):
     material = Material.query.get_or_404(material_id)
     material_name = material.part_name
@@ -494,6 +614,7 @@ def process_rates():
 
 
 @app.route("/process-rates/<int:rate_id>/price", methods=["POST"])
+@admin_required
 def update_process_rate(rate_id):
     rate = ProcessRate.query.get_or_404(rate_id)
     data = request.get_json(silent=True) or {}
@@ -703,6 +824,7 @@ def quote_detail(quote_id):
 
 
 @app.route("/quotes/<int:quote_id>/delete", methods=["POST"])
+@admin_required
 def delete_quote(quote_id):
     quote = Quote.query.filter(
         Quote.id == quote_id,

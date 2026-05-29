@@ -90,6 +90,27 @@
             color: #ffffff;
         }
 
+        .userbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .userbar form { margin: 0; }
+
+        .link-button {
+            border: 0;
+            background: transparent;
+            color: var(--accent);
+            cursor: pointer;
+            font: inherit;
+            font-weight: 800;
+            padding: 0;
+        }
+
         .hero,
         .panel,
         .metric,
@@ -331,6 +352,14 @@
                 <a href="/temporary-quote" class="{% if request.path == '/temporary-quote' %}active{% endif %}">临时报价</a>
                 <a href="/quotes" class="{% if request.path.startswith('/quotes') %}active{% endif %}">报价档案</a>
             </nav>
+            {% if current_user %}
+            <div class="userbar">
+                <span>{{ current_user.display_name }}{% if current_user.role == "sales" %} · 只读价格{% endif %}</span>
+                <form action="/logout" method="POST">
+                    <button class="link-button" type="submit">退出</button>
+                </form>
+            </div>
+            {% endif %}
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}

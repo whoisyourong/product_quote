@@ -11,9 +11,11 @@
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <a class="button ghost" href="/quotes">返回档案</a>
+        {% if is_admin() %}
         <form action="/quotes/{{ quote.id }}/delete" method="POST" onsubmit="return confirm('确定删除报价 #{{ quote.id }} 吗？删除后将不再显示在报价档案中。');">
             <button class="button danger" type="submit">删除报价</button>
         </form>
+        {% endif %}
     </div>
 </div>
 
